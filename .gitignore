@@ -1,4 +1,7 @@
 /recordings/
 /labels/
 /images/
+/dataset/positives/
+/dataset/negatives/
+/dataset/train/
 .env
