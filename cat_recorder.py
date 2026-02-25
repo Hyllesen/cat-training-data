@@ -12,6 +12,7 @@ Usage:
     2. python cat_recorder.py
 """
 
+import argparse
 import logging
 import os
 import time
@@ -74,14 +75,16 @@ def connect_stream(url: str) -> tuple[cv2.VideoCapture, int, int, float]:
     return cap, width, height, fps
 
 
-def open_writer(width: int, height: int, fps: float) -> tuple[cv2.VideoWriter, Path]:
+def open_writer(width: int, height: int, fps: float, conf: tuple[float, float]) -> tuple[cv2.VideoWriter, Path]:
     """
-    Create a new VideoWriter with a timestamped filename.
+    Create a new VideoWriter with a timestamped filename including the
+    detection confidence interval (e.g. cat_20240225_031542_c75-92.mp4).
     Tries the H.264 (avc1) codec first; falls back to mp4v for compatibility.
     Returns (writer, file_path).
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath  = OUTPUT_DIR / f"cat_{timestamp}.mp4"
+    timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
+    conf_tag   = f"c{int(conf[0]*100)}-{int(conf[1]*100)}"
+    filepath   = OUTPUT_DIR / f"cat_{timestamp}_{conf_tag}.mp4"
 
     for codec in (CODEC, "mp4v"):
         fourcc = cv2.VideoWriter_fourcc(*codec)
@@ -94,13 +97,13 @@ def open_writer(width: int, height: int, fps: float) -> tuple[cv2.VideoWriter, P
     raise RuntimeError("No compatible video codec found (tried avc1, mp4v)")
 
 
-def detect_cat(results) -> bool:
+def detect_cat(results) -> Optional[tuple[float, float]]:
     """
-    Return True only if a cat is detected AND no birds (chickens) 
-    are the dominant detection in the frame.
+    Return (min_conf, max_conf) of all cat detections if a cat is found AND no
+    birds (chickens) are present; otherwise return None.
     """
     bird_detected = False
-    cat_detected = False
+    cat_confs: list[float] = []
 
     for result in results:
         for box in result.boxes:
@@ -111,13 +114,13 @@ def detect_cat(results) -> bool:
                 if class_id == BIRD_CLASS_ID:
                     bird_detected = True
                 elif class_id == CAT_CLASS_ID:
-                    cat_detected = True
+                    cat_confs.append(conf)
 
     # If a chicken is in the frame, we ignore everything to prevent false positives
-    if bird_detected:
-        return False
-        
-    return cat_detected
+    if bird_detected or not cat_confs:
+        return None
+
+    return (min(cat_confs), max(cat_confs))
 
 
 def release_writer(writer: Optional[cv2.VideoWriter], filepath: Optional[Path]) -> None:
@@ -128,6 +131,14 @@ def release_writer(writer: Optional[cv2.VideoWriter], filepath: Optional[Path]) 
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="24/7 RTSP Cat Detection & Recorder")
+    parser.add_argument(
+        "--show", "-s", action="store_true",
+        help="Display a live preview window whenever a cat is detected",
+    )
+    args = parser.parse_args()
+    show_preview = args.show
+
     if not RTSP_URL:
         log.error("RTSP_URL not set in .env file. Please configure it and try again.")
         return
@@ -170,7 +181,8 @@ def main() -> None:
                 # Run YOLO inference on the current frame
                 # Specifically monitor for both birds and cats
                 results = model(frame, device=DEVICE, classes=[14, 16], verbose=False)
-                cat_present = detect_cat(results)
+                cat_conf = detect_cat(results)
+                cat_present = cat_conf is not None
 
                 now = time.monotonic()
 
@@ -185,12 +197,18 @@ def main() -> None:
 
                     if not is_recording:
                         # Cat just appeared — open a new video clip
-                        writer, clip_path = open_writer(width, height, fps)
+                        log.info("Cat detected (conf %.0f%%–%.0f%%)", cat_conf[0]*100, cat_conf[1]*100)
+                        writer, clip_path = open_writer(width, height, fps, cat_conf)
                         is_recording = True
 
                 if is_recording:
                     # Write the current frame into the active clip
                     writer.write(frame)
+
+                    if show_preview:
+                        cv2.imshow("Cat detected", frame)
+                        if cv2.waitKey(1) & 0xFF == ord("q"):
+                            raise KeyboardInterrupt
 
                     # Check whether the absence window has elapsed.
                     # (now - last_seen_ts) grows while no cat is detected;
@@ -201,6 +219,8 @@ def main() -> None:
                         clip_path  = None
                         is_recording = False
                         log.info("Cat absent for %.1fs — recording stopped", ABSENCE_TIMEOUT)
+                        if show_preview:
+                            cv2.destroyAllWindows()
 
         except KeyboardInterrupt:
             # --- CLEAN SHUTDOWN via Ctrl+C ---
