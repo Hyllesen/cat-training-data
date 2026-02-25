@@ -1,6 +1,7 @@
 /recordings/
 /labels/
 /images/
+/dataset/*
 /dataset/positives/
 /dataset/negatives/
 /dataset/train/
