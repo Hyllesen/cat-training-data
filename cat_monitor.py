@@ -65,7 +65,8 @@ def run_monitor():
                     label = id_results[0].names[id_results[0].probs.top1]
 
                     # Update frame-level tracking for naming and deque
-                    if conf > current_frame_conf:
+                    # Change this part of your loop:
+                    if conf > current_frame_conf and conf > 0.85: # Added a 0.85 floor
                         current_frame_conf = conf
                         current_frame_identity = label
                     
