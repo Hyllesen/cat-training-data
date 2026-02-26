@@ -2,6 +2,8 @@
 /labels/
 /images/
 /dataset/*
+/datasets/*
+/detections/*
 /dataset/positives/
 /dataset/negatives/
 /dataset/train/
@@ -11,3 +13,4 @@
 /training_data/
 /dataset_raw/
 /training_data_split/
+.venv/
