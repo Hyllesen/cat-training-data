@@ -8,3 +8,6 @@
 .env
 .venv_audio/
 /audio_recordings/
+/training_data/
+/dataset_raw/
+/training_data_split/
