@@ -10,7 +10,7 @@ load_dotenv()
 # --- CONFIGURATION ---
 RTSP_URL = os.getenv("RTSP_URL")
 DETECTOR_MODEL = os.getenv("DETECTOR_PATH", "models/detector/best.pt")
-CLASSIFIER_MODEL = os.getenv("CLASSIFIER_PATH", "runs/classify/cat_identity_v1/weights/best.pt")
+CLASSIFIER_MODEL = os.getenv("CLASSIFIER_PATH", "models/classify/best.pt")
 DETECTIONS_DIR = "detections"
 
 CONF_THRESHOLD = 0.7
