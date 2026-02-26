@@ -6,3 +6,5 @@
 /dataset/negatives/
 /dataset/train/
 .env
+.venv_audio/
+/audio_recordings/
