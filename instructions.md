@@ -37,8 +37,9 @@ The system uses a two-stage computer vision pipeline:
 - [x] RTSP connection and frame processing.
 - [x] YOLO Detection (Cat vs. No Cat).
 - [x] Identity Classification (Orange vs. Squaky vs. Horny Meow).
+- [x] **Classification Buffer:** Uses a `deque` of the last 30 detections to ensure at least 15 classifications of `horny_meow` before triggering a deterrent, preventing false positives on resident cats.
 - [x] Visual feedback and video recording of events.
-- [ ] **Implementation of Deterrent:** Integrate with hardware (e.g., smart plug, local speaker, or GPIO) to sound a horn or spray water when `horny_meow` is detected with high confidence.
+- [ ] **Implementation of Deterrent:** Integrate with hardware (e.g., smart plug, local speaker, or GPIO) to sound a horn or spray water when the `DETERRENT_THRESHOLD` is met.
 
 ## Guidance for AI Agents
 - **Performance:** Always use `device='mps'` when running models to utilize the Mac GPU.

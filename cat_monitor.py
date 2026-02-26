@@ -2,6 +2,7 @@ import cv2
 import time
 import os
 from datetime import datetime
+from collections import deque
 from ultralytics import YOLO
 from dotenv import load_dotenv
 
@@ -10,12 +11,18 @@ load_dotenv()
 # --- CONFIGURATION ---
 RTSP_URL = os.getenv("RTSP_URL")
 DETECTOR_MODEL = os.getenv("DETECTOR_PATH", "models/detector/best.pt")
-CLASSIFIER_MODEL = os.getenv("CLASSIFIER_PATH", "runs/classify/cat_identity_v3/weights/best.pt")
+CLASSIFIER_MODEL = os.getenv("CLASSIFIER_PATH", "runs/classify/cat_identity_v4/weights/best.pt")
 DETECTIONS_DIR = "detections"
 
 CONF_THRESHOLD = 0.7
-ALERT_COOLDOWN = 30 
+ALERT_COOLDOWN = 60 
 VIDEO_BUFFER_SECONDS = 5 
+
+# Deterrent Logic
+DETERRENT_THRESHOLD = 15
+HISTORY_WINDOW = 30
+identity_history = deque(maxlen=HISTORY_WINDOW)
+last_deterrent_time = 0
 
 os.makedirs(DETECTIONS_DIR, exist_ok=True)
 
@@ -23,6 +30,7 @@ detector = YOLO(DETECTOR_MODEL)
 classifier = YOLO(CLASSIFIER_MODEL)
 
 def run_monitor():
+    global last_deterrent_time
     cap = cv2.VideoCapture(RTSP_URL)
     
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -56,7 +64,7 @@ def run_monitor():
                     conf = id_results[0].probs.top1conf.item()
                     label = id_results[0].names[id_results[0].probs.top1]
 
-                    # Update frame-level tracking for naming
+                    # Update frame-level tracking for naming and deque
                     if conf > current_frame_conf:
                         current_frame_conf = conf
                         current_frame_identity = label
@@ -76,6 +84,25 @@ def run_monitor():
                     # Draw Text
                     cv2.putText(frame, label_str, (x1, y1 - 5), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        # --- UPDATE HISTORY & DETERRENT LOGIC ---
+        if current_frame_identity:
+            identity_history.append(current_frame_identity)
+            
+            # Count how many times 'horny_meow' was seen in the recent window
+            stray_count = identity_history.count("horny_meow")
+            
+            # Trigger deterrent if threshold met and cooldown passed
+            if stray_count >= DETERRENT_THRESHOLD:
+                current_time = time.time()
+                if current_time - last_deterrent_time > ALERT_COOLDOWN:
+                    print(f"🚨 DETERRENT TRIGGERED! (Stray seen {stray_count}/{HISTORY_WINDOW} times)")
+                    # TODO: Call hardware deterrent here (e.g. sound_horn(), spray_water())
+                    last_deterrent_time = current_time
+                
+                # Visual indicator on frame that deterrent is active/ready
+                cv2.putText(frame, "!!! STRAY DETECTED - DETERRENT READY !!!", (50, 50), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
 
         # --- VIDEO SAVING LOGIC ---
         if current_frame_identity and current_frame_identity != "background":
