@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+import requests
 from datetime import datetime
 from collections import deque
 from ultralytics import YOLO
@@ -12,6 +13,7 @@ load_dotenv()
 RTSP_URL = os.getenv("RTSP_URL")
 DETECTOR_MODEL = os.getenv("DETECTOR_PATH", "models/detector/best.pt")
 CLASSIFIER_MODEL = os.getenv("CLASSIFIER_PATH", "runs/classify/cat_identity_v4/weights/best.pt")
+ESP8266_IP = os.getenv("ESP8266_IP") # e.g. "192.168.1.50"
 DETECTIONS_DIR = "detections"
 
 CONF_THRESHOLD = 0.7
@@ -28,6 +30,24 @@ os.makedirs(DETECTIONS_DIR, exist_ok=True)
 
 detector = YOLO(DETECTOR_MODEL)
 classifier = YOLO(CLASSIFIER_MODEL)
+
+def trigger_deterrent():
+    if not ESP8266_IP:
+        print("⚠️ ESP8266_IP not set in environment. Skipping deterrent trigger.")
+        return False
+    
+    try:
+        url = f"http://{ESP8266_IP}/trigger"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            print("✅ Horn triggered successfully via ESP8266.")
+            return True
+        else:
+            print(f"❌ Failed to trigger horn. Status code: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"❌ Error communicating with ESP8266: {e}")
+        return False
 
 def run_monitor():
     global last_deterrent_time
@@ -98,7 +118,9 @@ def run_monitor():
                 current_time = time.time()
                 if current_time - last_deterrent_time > ALERT_COOLDOWN:
                     print(f"🚨 DETERRENT TRIGGERED! (Stray seen {stray_count}/{HISTORY_WINDOW} times)")
-                    # TODO: Call hardware deterrent here (e.g. sound_horn(), spray_water())
+                    cv2.putText(frame, "!!! ☠️☢️ DETERRENT TRIGGERED ☢️☠️ !!!", (50, 100), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                    trigger_deterrent()
                     last_deterrent_time = current_time
                 
                 # Visual indicator on frame that deterrent is active/ready
