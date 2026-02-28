@@ -109,6 +109,10 @@ def run_monitor():
         # --- UPDATE HISTORY & DETERRENT LOGIC ---
         if current_frame_identity:
             identity_history.append(current_frame_identity)
+
+            # If we see a resident cat, clear the history so the horn won't fire
+            if current_frame_identity in ["orange", "squaky"]:
+                identity_history.clear()
             
             # Count how many times 'horny_meow' was seen in the recent window
             stray_count = identity_history.count("horny_meow")
@@ -118,9 +122,9 @@ def run_monitor():
                 current_time = time.time()
                 if current_time - last_deterrent_time > ALERT_COOLDOWN:
                     print(f"🚨 DETERRENT TRIGGERED! (Stray seen {stray_count}/{HISTORY_WINDOW} times)")
-                    cv2.putText(frame, "!!! ☠️☢️ DETERRENT TRIGGERED ☢️☠️ !!!", (50, 100), 
+                    cv2.putText(frame, "!!! DETERRENT TRIGGERED !!!", (50, 100), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-                    trigger_deterrent()
+                    # trigger_deterrent()
                     last_deterrent_time = current_time
                 
                 # Visual indicator on frame that deterrent is active/ready

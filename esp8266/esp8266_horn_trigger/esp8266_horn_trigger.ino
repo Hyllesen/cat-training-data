@@ -1,9 +1,10 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include "arduino_secrets.h"
 
 // --- CONFIGURATION ---
-const char* ssid = "HUAWEI-2.4G-7Pdq";
-const char* password = "KqWGaq8v";
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 const int HORN_PIN = 5; // D1 on NodeMCU, adjust as needed
 const int HORN_DURATION_MS = 800; // 0.8 seconds
 
@@ -51,6 +52,7 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.print("ESP8266 MAC Address: ");
   Serial.println(WiFi.macAddress()); // This will print it clearly
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
 
   server.on("/", handleRoot);
   server.on("/trigger", handleTrigger);

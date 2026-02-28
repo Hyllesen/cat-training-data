@@ -14,3 +14,4 @@
 /dataset_raw/
 /training_data_split/
 .venv/
+arduino_secrets.h

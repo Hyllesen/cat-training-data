@@ -29,7 +29,7 @@ Before training, ensure your folders haven't become heavily imbalanced. The mode
 Run the count command in your zsh terminal:
 
 Bash
-for d in \*/; do echo "$d $(ls -1 "$d" | wc -l)"; done
+for d in \*/; do echo "${d%/} $(find "$d" -maxdepth 1 -type f | wc -l)"; done
 If one folder is >20% larger than the others, run python balance_dataset.py.
 
 Step 4: Fine-Tune (The v4+ Command)
